@@ -56,8 +56,8 @@ push rcx
 jmp .done
 
 .openBracket0:
-call findMatchingBrace
-jmp .done
+push .done ; call with return address = .done
+jmp findMatchingBrace
 
 .closeBracket:
 pop rdx
@@ -105,8 +105,8 @@ jmp .done
 .zero:
 mov rcx, zeroMsg
 mov rdx, zeroMsgLen
-call print
-jmp exit
+push exit ; call with return address = exit
+jmp print
 
 findMatchingBrace:
 mov rdx, 0
