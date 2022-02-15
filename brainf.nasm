@@ -49,7 +49,14 @@ mov [rbx], al
 jmp .done
 
 .openBracket:
+mov al, [rbx]
+cmp al, 0
+je .openBracket0
 push rcx
+jmp .done
+
+.openBracket0:
+call findMatchingBrace
 jmp .done
 
 .closeBracket:
@@ -100,6 +107,33 @@ mov rcx, zeroMsg
 mov rdx, zeroMsgLen
 call print
 jmp exit
+
+findMatchingBrace:
+mov rdx, 0
+jmp .begin
+
+.loopAround:
+inc rcx
+
+.begin:
+mov al, [rcx]
+cmp al, '['
+je .open
+cmp al, ']'
+je .close
+cmp al, 0
+je exit
+jmp .loopAround
+
+.open:
+inc rdx
+jmp .loopAround
+
+.close:
+dec rdx
+cmp rdx, 0
+jne .loopAround
+ret
 
 print:
 ; msg stored in rcx
