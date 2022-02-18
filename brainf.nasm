@@ -2,6 +2,7 @@ section .text
  global _start
 
 _start:
+call readCharSetMode
 ; TODO maybe read from a file
 
 runCode:
@@ -94,11 +95,11 @@ pop rcx
 jmp .done
 
 .comma:
-; TODO actually take user input
-mov rdx, [userInputLoc]
-mov al, [rdx]
-inc rdx
-mov [userInputLoc], rdx
+push rcx
+push rbx
+call readChar
+pop rbx
+pop rcx
 mov [rbx], al
 jmp .done
 
@@ -138,28 +139,80 @@ ret
 print:
 ; msg stored in rcx
 ; len stored in rdx
-mov rbx, 1
-mov rax, 4
+mov rax, 4 ; write
+mov rbx, 1 ; stdout file descriptor
 int 0x80
 ret
 
+readCharSetMode:
+mov rax, 54 ; ioctl
+mov rbx, 0 ; stdin file descriptor
+mov rcx, 0x5401 ; tcgets
+mov rdx, termios
+int 0x80
+
+mov eax, [termios+0xC] ; lflag
+mov [termiosOldLflag], eax
+and eax, ~(2 | 8) ; ~(lcanon | echo)
+mov [termios+0xC], eax
+
+mov rax, 54 ; ioctl
+mov rbx, 0 ; stdin
+mov ecx, 0x5402 ; tcsets
+mov rdx, termios
+int 0x80
+
+readCharResetMode:
+mov eax, [termiosOldLflag]
+mov [termios+0xC], eax ; lflag
+
+mov rax, 54 ; ioctl
+mov rbx, 0 ; stdin
+mov ecx, 0x5402 ; tcsets
+mov rdx, termios
+int 0x80
+
+ret
+
+readChar:
+; result stored in al
+mov rax, 3 ; read
+mov rbx, 0 ; stdin file descriptor
+mov rcx, inputByte
+mov rdx, 1
+int 0x80
+cmp rax, 1
+jne .err
+mov al, [inputByte]
+ret
+
+.err:
+mov rcx, readCharErrMsg
+mov rdx, readCharErrMsgLen
+
 exit:
+call readCharResetMode ; TODO what if user ctrl+c 's
 mov rax, 1
 int 0x80
 
 section .data
 
 code:
-db "(hello world program) ++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>. (read all the user input) [.,]", 0
+db "(hello world program) ++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>. (read all the user input)", 0, " ,[+.,]", 0  ; got rid of user input part because user has to sigint to exit and that causes stdin to not get fixed
 
 dataBegin:
 times 30000 db 0
 dataEnd:
 
-userInput db "this is the user input", 0xA, 0
-userInputLoc dq userInput
-
 singleCharPrintMsg db 0
+
+inputByte db 0
 
 zeroMsg db "done"
 zeroMsgLen equ $ - zeroMsg
+
+readCharErrMsg db "failed to read char"
+readCharErrMsgLen equ $ - zeroMsg
+
+termios: times 32 db 0
+termiosOldLflag: dd 0
