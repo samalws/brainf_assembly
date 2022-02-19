@@ -122,11 +122,27 @@ push exitGood ; call with return address = exitGood
 jmp print
 
 findMatchingBrace:
+; first look up in cache
+mov rdx, rcx
+sub rdx, code
+shl rdx, 1
+add rdx, fwdCache
+mov r10, rdx ; save this address for later so we can use it
 mov rdx, 0
+mov dx, [r10]
+cmp rdx, 0
+je .calcNew
+add rcx, rdx
+ret
+
+.calcNew:
+mov rdx, 0
+mov r8, 0 ; counter
 jmp .begin
 
 .loopAround:
 inc rcx
+inc r8
 
 .begin:
 mov al, [rcx]
@@ -146,6 +162,17 @@ jmp .loopAround
 dec rdx
 cmp rdx, 0
 jne .loopAround
+
+; write to cache if we can fit
+mov r9, r8
+shr r9, 16
+cmp r9, 0
+jne .ret
+
+; okay, we can fit
+mov [r10], r8w
+
+.ret:
 ret
 
 print:
@@ -186,9 +213,13 @@ section .data
 
 fileName db "input.txt", 0
 
+codeLen equ 1000000
+
 code:
-times 10000 db 0
+times codeLen db 0
 codeLen equ $ - code
+
+fwdCache: times codeLen dw 0
 
 dataBegin:
 times 30000 db 0
@@ -203,6 +234,3 @@ zeroMsgLen equ $ - zeroMsg
 
 readCharErrMsg db "failed to read char"
 readCharErrMsgLen equ $ - zeroMsg
-
-termios: times 32 db 0
-termiosOldLflag: dd 0
