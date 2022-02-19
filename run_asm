@@ -1,0 +1,6 @@
+nasm -f elf64 brainf.nasm
+ld -m elf_x86_64 -s -o brainf brainf.o
+./brainf
+code=$?
+rm brainf.o brainf
+exit $code
