@@ -184,7 +184,7 @@ int 0x80
 
 section .data
 
-fileName db "input.txt"
+fileName db "input.txt", 0
 
 code:
 times 10000 db 0
