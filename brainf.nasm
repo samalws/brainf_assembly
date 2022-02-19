@@ -2,7 +2,20 @@ section .text
  global _start
 
 _start:
-; TODO maybe read from a file
+push runCode
+jmp readFile ; call with return address = runCode
+
+readFile:
+mov ebx, fileName
+mov eax, 5 ; open
+mov ecx, 0 ; read-only
+int 0x80
+mov ebx, eax ; file descriptor
+mov eax, 3   ; read
+mov ecx, code
+mov edx, codeLen-1
+int 0x80
+ret
 
 runCode:
 mov rcx, code
@@ -171,8 +184,11 @@ int 0x80
 
 section .data
 
+fileName db "input.txt"
+
 code:
-db "(hello world program) ++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>. (read all the user input) ,----------[+++++++++++.,----------]", 0
+times 10000 db 0
+codeLen equ $ - code
 
 dataBegin:
 times 30000 db 0
