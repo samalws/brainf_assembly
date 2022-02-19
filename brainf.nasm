@@ -2,7 +2,6 @@ section .text
  global _start
 
 _start:
-call readCharSetMode
 ; TODO maybe read from a file
 
 runCode:
@@ -106,7 +105,7 @@ jmp .done
 .zero:
 mov rcx, zeroMsg
 mov rdx, zeroMsgLen
-push exit ; call with return address = exit
+push exitGood ; call with return address = exitGood
 jmp print
 
 findMatchingBrace:
@@ -123,7 +122,7 @@ je .open
 cmp al, ']'
 je .close
 cmp al, 0
-je exit
+je exitGood
 jmp .loopAround
 
 .open:
@@ -144,36 +143,6 @@ mov rbx, 1 ; stdout file descriptor
 int 0x80
 ret
 
-readCharSetMode:
-mov rax, 54 ; ioctl
-mov rbx, 0 ; stdin file descriptor
-mov rcx, 0x5401 ; tcgets
-mov rdx, termios
-int 0x80
-
-mov eax, [termios+0xC] ; lflag
-mov [termiosOldLflag], eax
-and eax, ~(2 | 8) ; ~(lcanon | echo)
-mov [termios+0xC], eax
-
-mov rax, 54 ; ioctl
-mov rbx, 0 ; stdin
-mov ecx, 0x5402 ; tcsets
-mov rdx, termios
-int 0x80
-
-readCharResetMode:
-mov eax, [termiosOldLflag]
-mov [termios+0xC], eax ; lflag
-
-mov rax, 54 ; ioctl
-mov rbx, 0 ; stdin
-mov ecx, 0x5402 ; tcsets
-mov rdx, termios
-int 0x80
-
-ret
-
 readChar:
 ; result stored in al
 mov rax, 3 ; read
@@ -189,16 +158,21 @@ ret
 .err:
 mov rcx, readCharErrMsg
 mov rdx, readCharErrMsgLen
+mov rbx, 1
+jmp exit
+
+exitGood:
+mov rbx, 0
 
 exit:
-call readCharResetMode ; TODO what if user ctrl+c 's
+; rbx: exit code
 mov rax, 1
 int 0x80
 
 section .data
 
 code:
-db "(hello world program) ++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>. (read all the user input)", 0, " ,[+.,]", 0  ; got rid of user input part because user has to sigint to exit and that causes stdin to not get fixed
+db "(hello world program) ++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>. (read all the user input) ,----------[+++++++++++.,----------]", 0
 
 dataBegin:
 times 30000 db 0
